@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 코디 컨설턴트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        background-color: #0d1320;
+        font-family: "Inter", sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 0;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-fade-in {
+        animation: fadeIn 1s ease-out forwards;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="auth-container" class="p-8 md:p-12 bg-transparent text-white w-full h-full mx-auto"></div>
+
+    <script>
+      const authContainer = document.getElementById("auth-container");
+      let currentView = "main"; // main, login, signup
+
+      const API_BASE_URL = "http://localhost:5000/api";
+
+      // -------------------------------
+      // 메인 화면
+      // -------------------------------
+      const getMainView = () => `
+        <div class="flex flex-col items-center justify-center text-center px-6 py-12 animate-fade-in">
+          <h1 class="text-5xl md:text-7xl font-extrabold mb-4">
+            <span class="text-gray-400">AI</span> <span class="text-white">코디 컨설턴트</span>
+          </h1>
+          <p class="text-gray-400 text-lg md:text-xl mb-14">당신의 옷장, 새로운 시작</p>
+          <div class="flex space-x-6 w-full max-w-md">
+            <button id="main-login-btn"
+              class="flex-1 px-6 py-4 text-lg font-semibold rounded-lg bg-white text-gray-900 shadow-lg hover:bg-gray-200 transition">
+              로그인
+            </button>
+            <button id="main-signup-btn"
+              class="flex-1 px-6 py-4 text-lg font-semibold rounded-lg border-2 border-white text-white hover:bg-white hover:text-gray-900 shadow-lg transition">
+              회원가입
+            </button>
+          </div>
+        </div>
+      `;
+
+      // -------------------------------
+      // 로그인 화면
+      // -------------------------------
+      const getLoginForm = () => `
+        <div class="flex flex-col items-center justify-center px-6 py-12 animate-fade-in">
+          <h1 class="text-4xl md:text-5xl font-extrabold mb-2">
+            <span class="text-gray-400">AI</span> <span class="text-white">코디 컨설턴트</span>
+          </h1>
+          <p class="text-gray-400 text-base md:text-lg mb-10">이메일과 비밀번호로 로그인하세요</p>
+          <form id="login-form" class="space-y-4 w-full max-w-sm">
+            <input type="email" name="email" placeholder="이메일" required
+              class="bg-gray-900 text-white border border-gray-700 w-full px-4 py-3 rounded-lg focus:border-white transition"/>
+            <input type="password" name="password" placeholder="비밀번호" required
+              class="bg-gray-900 text-white border border-gray-700 w-full px-4 py-3 rounded-lg focus:border-white transition"/>
+            <button type="submit"
+              class="w-full px-6 py-3 text-lg font-semibold rounded-lg bg-white text-gray-900 hover:bg-gray-200 transition">
+              로그인
+            </button>
+          </form>
+          <p class="mt-6 text-sm text-gray-400">계정이 없으신가요?
+            <a href="#" id="signup-link" class="text-blue-400 underline">회원가입</a>
+          </p>
+        </div>
+      `;
+
+      // -------------------------------
+      // 회원가입 화면
+      // -------------------------------
+      const getSignupForm = () => `
+        <div class="flex flex-col items-center justify-center px-6 py-12 animate-fade-in">
+          <h1 class="text-4xl md:text-5xl font-extrabold mb-2">
+            <span class="text-gray-400">AI</span> <span class="text-white">코디 컨설턴트</span>
+          </h1>
+          <p class="text-gray-400 text-base md:text-lg mb-10">회원가입하고 나만의 스타일을 만들어보세요</p>
+          <form id="signup-form" class="space-y-4 w-full max-w-sm">
+            <input type="text" name="name" placeholder="이름" required
+              class="bg-gray-900 text-white border border-gray-700 w-full px-4 py-3 rounded-lg"/>
+            <input type="date" name="dob" required
+              class="bg-gray-900 text-white border border-gray-700 w-full px-4 py-3 rounded-lg"/>
+            <input type="email" name="email" placeholder="이메일" required
+              class="bg-gray-900 text-white border border-gray-700 w-full px-4 py-3 rounded-lg"/>
+            <input type="password" name="password" placeholder="비밀번호 (6자 이상)" required
+              class="bg-gray-900 text-white border border-gray-700 w-full px-4 py-3 rounded-lg"/>
+            <button type="submit"
+              class="w-full px-6 py-3 text-lg font-semibold rounded-lg bg-white text-gray-900 hover:bg-gray-200 transition">
+              회원가입
+            </button>
+          </form>
+          <p class="mt-6 text-sm text-gray-400">이미 계정이 있으신가요?
+            <a href="#" id="login-link" class="text-blue-400 underline">로그인</a>
+          </p>
+        </div>
+      `;
+
+      // -------------------------------
+      // 서버 통신 (회원가입 & 로그인)
+      // -------------------------------
+      const handleFormSubmit = async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const endpoint = form.id === "login-form" ? "login" : "signup";
+        const url = `${API_BASE_URL}/${endpoint}`;
+        const data = Object.fromEntries(new FormData(form).entries());
+        const button = form.querySelector("button");
+        button.disabled = true;
+        button.textContent = "처리 중...";
+
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          const result = await res.json();
+
+          if (res.ok) {
+            alert(result.message);
+            if (endpoint === "login") renderServiceView(result.user);
+            else {
+              currentView = "login";
+              renderForm();
+            }
+          } else alert(result.message || "요청 실패");
+        } catch (err) {
+          console.error(err);
+          alert("서버 오류. 다시 시도해주세요.");
+        } finally {
+          button.disabled = false;
+          button.textContent = form.id === "login-form" ? "로그인" : "회원가입";
+        }
+      };
+
+      // -------------------------------
+      // 서비스 화면
+      // -------------------------------
+      function renderServiceView(user) {
+        authContainer.innerHTML = `
+          <div class="text-center text-white animate-fade-in">
+            <h1 class="text-4xl font-bold mb-4">환영합니다, ${user.name}님!</h1>
+            <p class="text-gray-400 mb-6">${user.email}</p>
+            <button id="logout" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg">로그아웃</button>
+          </div>
+        `;
+        document.getElementById("logout").addEventListener("click", () => {
+          currentView = "main";
+          renderForm();
+        });
+      }
+
+      // -------------------------------
+      // 렌더링 제어
+      // -------------------------------
+      const renderForm = () => {
+        if (currentView === "main") authContainer.innerHTML = getMainView();
+        else if (currentView === "login") authContainer.innerHTML = getLoginForm();
+        else if (currentView === "signup") authContainer.innerHTML = getSignupForm();
+
+        document.getElementById("main-login-btn")?.addEventListener("click", () => {
+          currentView = "login";
+          renderForm();
+        });
+        document.getElementById("main-signup-btn")?.addEventListener("click", () => {
+          currentView = "signup";
+          renderForm();
+        });
+        document.getElementById("signup-link")?.addEventListener("click", () => {
+          currentView = "signup";
+          renderForm();
+        });
+        document.getElementById("login-link")?.addEventListener("click", () => {
+          currentView = "login";
+          renderForm();
+        });
+
+        const form = document.querySelector("form");
+        form?.addEventListener("submit", handleFormSubmit);
+      };
+
+      document.addEventListener("DOMContentLoaded", renderForm);
+    </script>
+  </body>
+</html>
